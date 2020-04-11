@@ -1,0 +1,174 @@
+#! /bin/bash
+
+#Skippy Mesh Search Engine
+#Copyright (C) 2020 Vincent Chapman, AA, BSN, MSN-HI, RN, N1LQJ
+#
+#This program is free software: you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
+#
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+#
+#You should have received a copy of the GNU General Public License
+#along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+urldecode() { : "${*//+/ }"; echo -e "${_//%/\\x}"; }
+
+nodeip=$(cat /etc/skippy.conf | grep -i nodeip | tr ' ' '\n' | tail -n 1)
+nodename=$(cat /etc/skippy.conf | grep -i nodename | tr ' ' '\n' | tail -n 1)
+nodepass=$(cat /etc/skippy.conf | grep -i nodepass | tr ' ' '\n' | tail -n 1)
+
+cat | /usr/bin/expect > /opt/search/grab.txt << EOF
+set timeout 20
+spawn telnet $nodeip
+expect "login:"
+send "root\n"
+expect "Password:"
+send "$nodepass\n"
+expect "root@$nodename:~#"
+send "cd run\n"
+expect "root@$nodename:~/run#"
+send "cat services_olsr\n"
+expect "root@$nodename:~/run#"
+send "exit\n"
+EOF
+
+echo "Content-type: text/html"
+echo ""
+
+echo '<html>'
+echo '<head>'
+echo '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
+echo '<title>Skippy -- A Mesh Based Search Engine</title>'
+echo '</head>'
+echo "<body>"
+echo '<h1 style="color:blue;background:white;text-align:center;font-size:+64">Skippy Search<img src="/skippy/Skippy.png" height=100px></h1>'
+echo '<h2 style="color:black;background:white;text-align:center;font-size:+16">'
+echo "<form action=/cgi-bin/skippy>"
+echo '<input type="text" id="s" name="search">  <input type="submit" value="Search">'
+echo '</form>'
+
+lines=$(wc /opt/search/grab.txt -l | tr ' ' '\n' | head -n 1)
+start_rec=$(cat /opt/search/grab.txt | grep '### do not edit' -m 1 -n | tr ':' '\n' | head -n 1)
+start_rec=$(($lines - $start_rec - 1))
+
+cat /opt/search/grab.txt | tail -n $start_rec | head -n $(($start_rec - 4)) > /opt/search/olsr.list
+
+OIFS="$IFS"
+IFS="${IFS}&"
+set $QUERY_STRING
+Args="$*"
+IFS="$OIFS"
+ARGX=""
+ARGY=""
+ARGZ=""
+
+for i in $Args ;do
+	IFS="${OIFS}="
+        set $i
+        IFS="${OIFS}"
+
+        case $1 in
+                search) ARGX="`echo $2 | sed 's|[\]||g' | sed 's|%20| |g'`"
+                       ;;
+                *)     echo "<hr>Warning:"\
+                            "<br>Unrecognized variable \'$1\' passed by FORM in QUERY_STRING.<hr>"
+                       ;;
+
+        esac
+  done
+
+rm /opt/search/grab.txt
+
+input="/opt/search/olsr.list"
+input_local="/opt/search/olsr_local.list"
+
+ARGX=$(urldecode $ARGX)
+
+echo $(date)' '$REMOTE_ADDR' SEARCHED:'$ARGX >> /var/log/search.log
+
+if [ "$ARGX" == "_start" ]; then
+	echo 'Welcome to Skippy Version 1.02 (Release Date  10 April 2020)<br />'
+      	echo 'The first OLSR mesh based network search engine<br /><br />'
+	echo 'Search Terms Must Be Inside Double Quotes<br />'
+	echo '<br />Example Search Terms:<br /><br />'
+	echo '"phpbb" or "citadel"<br />'
+	echo '"chat" and ("AMO" or "IRC")<br/>'
+	echo '"voip" or "phone" or "whitepages"<br/ >'
+else
+	echo "Search String = $ARGX<br /></h2><hr />"
+	ARGX=$(echo $ARGX | sed -e 's/\"/\//g')
+	ARGX=$(echo $ARGX | sed -e 's/ and / \&\& /g')
+	ARGX=$(echo $ARGX | sed -e 's/ or / \|\| /g')
+	count=0
+	count_local=0
+	total_count=0
+	start_time=$(date +%s)
+	bg_colour="cyan"
+
+	echo "<table width=100% border='0px'>"
+
+	while i= read -r line
+	do
+		result=$(echo $line | sed 's/:/.local.mesh:/g' | sed 's/http.local.mesh:/http:/g' | sed 's/|tcp//g') 
+		url=$(echo $result | tr '|' '\n' | head -n 1)
+		desc=$(echo $result | tr '|' '\n' | tail -n 1 | sed 's/#/\n/g' | head -n 1)
+		blurb=$(echo $result | tr '|' '\n' | tail -n 1 | sed 's/#/\n/g' | tail -n 1)
+		total_count=$(($total_count + 1))
+		if [ $(echo "$result" | awk -v IGNORECASE=1 "$ARGX" | wc -c) \> 1 ]; then	
+			if [ $bg_colour == "cyan" ]; then
+                        	bg_colour="white"
+	                else
+        	                bg_colour="cyan"
+                	fi
+			echo "<tr bgcolor="$bg_colour"><td width=20%><a href=$url style='color:blue' target='_blankl' style='color:red'>$desc</a></td>"
+                        echo "<td width=46%>"$blurb"</td>" 
+                        echo "<td width=33%><a href=$url target='_blankl' style='color:green'>$url</a></td>"
+                        count=$(($count + 1))
+		fi
+	
+		if [ $(echo $result | grep -e olsr-database | wc -c) \> 1 ]; then
+			if [ $(echo $REMOTE_ADDR | grep -e '192.168.' | wc -c) \> 1 ]; then
+				url='http://'$SERVER_NAME'/olsr/olsr.txt'
+			fi
+			wget -t 1 -qO- $url > $input_local
+			while j= read -r line_local
+			do
+				result_local=$(echo $line_local | sed 's/:/.local.mesh:/g' | sed 's/http.local.mesh:/http:/g' | sed 's/|tcp//g')
+				url_local=$(echo $result_local | tr '|' '\n' | head -n 1)
+				desc_local=$(echo $result_local | tr '|' '\n' | tail -n 1 | sed 's/#/\n/g' | head -n 1)
+	        		blurb_local=$(echo $result_local | tr '|' '\n' | tail -n 1 | sed 's/#/\n/g' | tail -n 1)
+        
+				if [ $(echo "$result_local" | awk -v IGNORECASE=1 "$ARGX" | wc -c) \> 1 ]; then
+					if [ $bg_colour == "cyan" ]; then
+			                        bg_colour="white"
+			                else
+                        			bg_colour="cyan"
+					fi
+
+					echo "<tr width=20% bgcolor="$bg_colour"><td><a href=$url_local style='color:blue' target='_blankl' style='color:red'>$desc_local</a></td>"
+					echo "<td width=33%>$blurb_local</td>"
+                                        echo "<td width=33%><a href=$url_local target='_blankl' style='color:green'>$url_local</a></td>"
+	
+                        		count_local=$(($count_local + 1))
+			        fi
+			done < "$input_local"
+		fi
+		echo "</tr>"
+	done < "$input"
+	echo "</table>"
+
+	echo '<hr /><center>Found '$count' advertised matches and '$count_local' unadvertised matches within '$total_count' OLSR record entries in '$(($(date +%s) - $start_time))' seconds'
+fi       
+echo '<hr/>'
+echo '<h3 style="text-align:center;color:grey;background=white">Copyright(C) 2020 GPL v3<br />Vincent Chapman, N1LQJ<br><br><a href="/skippy/skippy-v1.01.tgz">Download Skippy Here</a></h3>'
+echo '</body>'
+echo '</html>'
+
+exit 0
+
+
