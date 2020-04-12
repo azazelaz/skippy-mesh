@@ -46,7 +46,8 @@ echo '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
 echo '<title>Skippy -- A Mesh Based Search Engine</title>'
 echo '</head>'
 echo "<body>"
-echo '<h1 style="color:blue;background:white;text-align:center;font-size:+64">Skippy Search<img src="/skippy/Skippy.png" height=100px></h1>'
+echo '<h1 style="color:blue;background:white;text-align:center;font-size:+64">Skippy Search<img src="data:image/png;base64,'$(cat /opt/search/skippy.img)'">'
+echo '</h1>'
 echo '<h2 style="color:black;background:white;text-align:center;font-size:+16">'
 echo "<form action=/cgi-bin/skippy>"
 echo '<input type="text" id="s" name="search">  <input type="submit" value="Search">'
@@ -128,7 +129,7 @@ else
 			echo "<tr bgcolor="$bg_colour"><td width=20%><a href=$url style='color:blue' target='_blankl' style='color:red'>$desc</a></td>"
                         echo "<td width=46%>"$blurb"</td>" 
                         echo "<td width=33%><a href=$url target='_blankl' style='color:green'>$url</a></td>"
-                        count=$(($count + 1))
+			count=$(($count + 1))
 		fi
 	
 		if [ $(echo $result | grep -e olsr-database | wc -c) \> 1 ]; then
