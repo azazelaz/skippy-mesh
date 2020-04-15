@@ -57,7 +57,7 @@ lines=$(wc /opt/search/grab.txt -l | tr ' ' '\n' | head -n 1)
 start_rec=$(cat /opt/search/grab.txt | grep '### do not edit' -m 1 -n | tr ':' '\n' | head -n 1)
 start_rec=$(($lines - $start_rec - 1))
 
-cat /opt/search/grab.txt | tail -n $start_rec | head -n $(($start_rec - 4)) > /opt/search/olsr.list
+cat /opt/search/grab.txt | tail -n $start_rec | head -n $(($start_rec - 3)) > /opt/search/olsr.list
 
 OIFS="$IFS"
 IFS="${IFS}&"
