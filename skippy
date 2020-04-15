@@ -167,7 +167,7 @@ else
 	echo '<hr /><center>Found '$count' advertised matches and '$count_local' unadvertised matches within '$total_count' OLSR record entries in '$(($(date +%s) - $start_time))' seconds'
 fi       
 echo '<hr/>'
-echo '<h3 style="text-align:center;color:grey;background=white">Copyright(C) 2020 GPL v3<br />Vincent Chapman, N1LQJ<br><br><a href="http://mesahams.net/skippy_1.02-1.all.deb">Download Skippy Here</a></h3>'
+echo '<h3 style="text-align:center;color:grey;background=white">Copyright(C) 2020 GPL v3<br />Vincent Chapman, N1LQJ<br><br><a href="http://mesahams.net/skippy_1.02-1-all.deb">Download Skippy Here</a></h3>'
 echo '</body>'
 echo '</html>'
 
