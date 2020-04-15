@@ -93,8 +93,9 @@ ARGX=$(urldecode $ARGX)
 echo $(date)' '$REMOTE_ADDR' SEARCHED:'$ARGX >> /var/log/search.log
 
 if [ "$ARGX" == "_start" ]; then
-	echo 'Welcome to Skippy Version 1.02 (Release Date  10 April 2020)<br />'
-      	echo 'The first OLSR mesh based network search engine<br /><br />'
+	echo 'Welcome to Skippy Version 1.02.1 (Release Date  10 April 2020)<br />'
+	echo 'Version 1.02.1 (Release Date 15 April 2020)<br />'
+	echo 'The first OLSR mesh based network search engine<br /><br />'
 	echo 'Search Terms Must Be Inside Double Quotes<br />'
 	echo '<br />Example Search Terms:<br /><br />'
 	echo '"phpbb" or "citadel"<br />'
